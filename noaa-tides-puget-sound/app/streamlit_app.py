@@ -1,3 +1,12 @@
+import sys, os
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if ROOT not in sys.path:
+    sys.path.insert(0, ROOT)
+
+from src.noaa_tides_ps.fetch import fetch
+from src.noaa_tides_ps.transform import tidy_from_raw
+
+
 import datetime as dt
 from pathlib import Path
 import streamlit as st
