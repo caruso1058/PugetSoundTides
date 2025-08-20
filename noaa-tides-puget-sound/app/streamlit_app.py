@@ -28,29 +28,41 @@ PRODUCTS = {
 st.set_page_config(page_title="Puget Sound Tides", page_icon="🌊", layout="wide")
 st.title("🌊 Puget Sound Tides — NOAA (Predictions & Observations)")
 
+# --- UI controls ---
 with st.sidebar:
-    station_name = st.selectbox("Station", list(STATIONS.keys()), index=0)
+    station_name = st.selectbox("Station", list(STATIONS.keys()), index=0, key="station_sel")
     station = STATIONS[station_name]
-    product_label = st.selectbox("Data", list(PRODUCTS.keys()), index=0)
+
+    product_label = st.selectbox("Data", list(PRODUCTS.keys()), index=0, key="product_sel")
     product = PRODUCTS[product_label]
-    days = st.slider("Days", min_value=1, max_value=7, value=2)
-    fetch_now = st.button("Fetch / Refresh")
 
-# ---- fetch data on demand ----
-if fetch_now:
-    # Compute date window
-    start = dt.date.today()
-    end = start + dt.timedelta(days=days - 1)
+    if product == "predictions":
+        days = st.slider("Days ahead", min_value=1, max_value=7, value=2, key="days_ahead")
+    else:
+        days = st.slider("Days back", min_value=1, max_value=7, value=2, key="days_back")
 
-    # Observations cannot be in the future → clamp end to today
-    if product == "water_level":
-        today = dt.date.today()
-        if end > today:
-            end = today
-        # If start accidentally goes past end (e.g., days=1 is fine), just enforce
-        if start > end:
-            start = end
+    auto_fetch = st.checkbox("Auto-fetch on change", value=True)
+    fetch_now = st.button("Fetch / Refresh now")
 
+# --- remember the last selection to auto-fetch on changes ---
+if "last_sel" not in st.session_state:
+    st.session_state.last_sel = {"station": None, "product": None, "days": None}
+
+selection = {"station": station, "product": product, "days": days}
+selection_changed = selection != st.session_state.last_sel
+
+def compute_window(product: str, days: int) -> tuple[dt.date, dt.date]:
+    today = dt.date.today()
+    if product == "predictions":
+        start = today
+        end = today + dt.timedelta(days=days - 1)  # forward window
+    else:
+        end = today
+        start = end - dt.timedelta(days=days - 1)  # backward window
+    return start, end
+
+def do_fetch():
+    start, end = compute_window(product, days)
     try:
         raw_path = fetch(
             station=station,
@@ -60,44 +72,52 @@ if fetch_now:
             product=product,
         )
         st.success(f"Fetched raw data → {raw_path.name}")
+        st.session_state.last_sel = selection
     except ValueError as e:
-        # NOAA returned a structured error (e.g., no data for range)
         st.warning(str(e))
         st.stop()
     except Exception as e:
         st.error(f"Fetch failed: {e}")
         st.stop()
 
-# ---- load latest raw for current selection and render ----
+# --- fetch when needed ---
+if fetch_now or (auto_fetch and selection_changed):
+    do_fetch()
+
+# --- load the most recent raw file for this selection ---
 raw_dir = Path("data/raw")
 raw_files = sorted(raw_dir.glob(f"{product}_{station}_*.json"))
 
 if not raw_files:
-    st.info("No raw data yet. Click **Fetch / Refresh** in the sidebar to pull NOAA data.")
-else:
-    try:
-        df = tidy_from_raw(raw_files[-1], product=product)
-    except Exception as e:
-        st.error(f"Failed to parse raw file: {e}")
-        st.stop()
+    st.info("No raw data yet. Click **Fetch / Refresh now** in the sidebar.")
+    st.stop()
 
-    if df.empty:
-        if product == "water_level":
-            st.info("No observation rows returned for this window. Try fewer days or switch to Predictions.")
-        else:
-            st.info("No prediction rows returned. Try a different station or a shorter window.")
-        st.stop()
+# latest for current selection
+raw_path = raw_files[-1]
 
-    # UI
-    st.subheader(f"{station_name} — {product_label}")
-    st.line_chart(df.set_index("timestamp")["tide_ft"])
+# parse + render
+try:
+    df = tidy_from_raw(raw_path, product=product)
+except Exception as e:
+    st.error(f"Failed to parse raw file: {e}")
+    st.stop()
 
-    with st.expander("Preview data (first 100 rows)"):
-        st.dataframe(df.head(100))
+if df.empty:
+    msg = "No rows returned."
+    if product == "water_level":
+        msg += " Try fewer days back or switch to Predictions."
+    st.info(msg)
+    st.stop()
 
-    st.download_button(
-        "Download CSV",
-        data=df.to_csv(index=False).encode("utf-8"),
-        file_name=f"tides_{product}_{station}.csv",
-        mime="text/csv",
-    )
+st.subheader(f"{station_name} — {product_label}")
+st.line_chart(df.set_index("timestamp")["tide_ft"])
+
+with st.expander("Preview data (first 100 rows)"):
+    st.dataframe(df.head(100))
+
+st.download_button(
+    "Download CSV",
+    data=df.to_csv(index=False).encode("utf-8"),
+    file_name=f"tides_{product}_{station}.csv",
+    mime="text/csv",
+)
