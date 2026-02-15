@@ -5,6 +5,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: noaa-tides-puget-sound
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

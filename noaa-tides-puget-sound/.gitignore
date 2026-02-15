@@ -1,6 +1,20 @@
-requests
-pandas
-matplotlib
-streamlit
-pytest
-pyflakes
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.coverage
+.mypy_cache/
+
+# Virtual envs
+.venv/
+venv/
+env/
+
+# IDE/editor
+.idea/
+.vscode/
