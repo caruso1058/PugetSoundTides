@@ -1,6 +1,7 @@
 requests
-pandas
-matplotlib
-streamlit
+pandas<3
+matplotlib<4
+streamlit>=1.41,<2
+altair<6
 pytest
 pyflakes
