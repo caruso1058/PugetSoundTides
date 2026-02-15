@@ -14,8 +14,10 @@ try:
     import matplotlib.pyplot as plt
     from matplotlib.dates import AutoDateLocator, DateFormatter
     MATPLOTLIB_AVAILABLE = True
-except ModuleNotFoundError:
+    MATPLOTLIB_IMPORT_ERROR = ""
+except Exception as exc:
     MATPLOTLIB_AVAILABLE = False
+    MATPLOTLIB_IMPORT_ERROR = str(exc)
 
 from src.noaa_tides_ps.fetch import fetch
 from src.noaa_tides_ps.transform import tidy_from_raw
@@ -90,7 +92,9 @@ def do_fetch():
 
 def render_tide_chart(df):
     if not MATPLOTLIB_AVAILABLE:
-        st.warning("matplotlib not installed; showing basic line chart.")
+        st.warning("Matplotlib unavailable; showing basic line chart.")
+        if MATPLOTLIB_IMPORT_ERROR:
+            st.caption(f"Matplotlib import error: {MATPLOTLIB_IMPORT_ERROR}")
         st.line_chart(df.set_index("timestamp")["tide_ft"])
         return
 
