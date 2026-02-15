@@ -9,8 +9,13 @@ import datetime as dt
 from pathlib import Path
 
 import streamlit as st
-import matplotlib.pyplot as plt
-from matplotlib.dates import AutoDateLocator, DateFormatter
+
+try:
+    import matplotlib.pyplot as plt
+    from matplotlib.dates import AutoDateLocator, DateFormatter
+    MATPLOTLIB_AVAILABLE = True
+except ModuleNotFoundError:
+    MATPLOTLIB_AVAILABLE = False
 
 from src.noaa_tides_ps.fetch import fetch
 from src.noaa_tides_ps.transform import tidy_from_raw
@@ -84,6 +89,11 @@ def do_fetch():
 
 
 def render_tide_chart(df):
+    if not MATPLOTLIB_AVAILABLE:
+        st.warning("matplotlib not installed; showing basic line chart.")
+        st.line_chart(df.set_index("timestamp")["tide_ft"])
+        return
+
     fig, ax = plt.subplots(figsize=(10, 4))
     ax.plot(df["timestamp"], df["tide_ft"], linewidth=2)
     ax.set_xlabel("Time")
