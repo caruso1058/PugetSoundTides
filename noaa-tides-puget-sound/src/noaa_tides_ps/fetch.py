@@ -1,14 +1,17 @@
 from __future__ import annotations
 import argparse, datetime as dt
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, Union
 import requests, json
-from zoneinfo import ZoneInfo
+try:
+    from zoneinfo import ZoneInfo
+except Exception:
+    ZoneInfo = None
 
 BASE_URL = "https://api.tidesandcurrents.noaa.gov/api/prod/datagetter"
 SUN_API_URL = "https://api.sunrise-sunset.org/json"
 
-STATION_COORDS: Dict[str, Dict[str, str | float]] = {
+STATION_COORDS: Dict[str, Dict[str, Union[str, float]]] = {
     "9447130": {"name": "Seattle", "lat": 47.6026, "lng": -122.3393, "tz": "US/Pacific"},
     "9446484": {"name": "Tacoma", "lat": 47.2669, "lng": -122.4134, "tz": "US/Pacific"},
     "9444900": {"name": "Port Townsend", "lat": 48.1114, "lng": -122.7596, "tz": "US/Pacific"},
@@ -59,7 +62,7 @@ def fetch(station: str, start: dt.date, end: dt.date, out_dir: Path, product: st
 
 def fetch_sun_events(station: str, start: dt.date, end: dt.date) -> list[Dict[str, str]]:
     meta = STATION_COORDS.get(str(station))
-    if not meta:
+    if not meta or ZoneInfo is None:
         return []
 
     tz = ZoneInfo(str(meta["tz"]))
