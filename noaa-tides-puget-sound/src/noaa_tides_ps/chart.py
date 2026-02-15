@@ -4,11 +4,9 @@ from pathlib import Path
 import sys
 import pandas as pd
 import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.dates import AutoDateLocator, DateFormatter
-
-# Uncomment if you hit GUI backend issues:
-# matplotlib.use("Agg")
 
 STATION_NAMES = {
     "9447130": "Seattle",
@@ -27,8 +25,13 @@ def plot_tide(csv_path: Path, out_path: Path, title: str, annotate: bool = True,
     if not csv_path.exists():
         raise FileNotFoundError(f"CSV not found: {csv_path}")
 
+    parse_dates = ["timestamp"]
     try:
-        df = pd.read_csv(csv_path, parse_dates=["timestamp"])
+        preview = pd.read_csv(csv_path, nrows=1)
+        for col in ("sunrise", "sunset"):
+            if col in preview.columns:
+                parse_dates.append(col)
+        df = pd.read_csv(csv_path, parse_dates=parse_dates)
     except Exception as e:
         raise RuntimeError(f"Failed to read CSV {csv_path}: {e}")
 
@@ -65,6 +68,36 @@ def plot_tide(csv_path: Path, out_path: Path, title: str, annotate: bool = True,
     y_min, y_max = float(df["tide_ft"].min()), float(df["tide_ft"].max())
     pad = max(0.3, (y_max - y_min) * 0.10)
     ax.set_ylim(y_min - pad * 0.15, y_max + pad)
+
+    if "sunrise" in df.columns:
+        for ts in sorted(pd.to_datetime(df["sunrise"], errors="coerce").dropna().unique()):
+            ax.axvline(pd.Timestamp(ts), color="#d4a017", linestyle="--", linewidth=1.1, alpha=0.8)
+            label = pd.Timestamp(ts).strftime("Sunrise %I:%M %p").replace(" 0", " ")
+            ax.annotate(
+                label,
+                (pd.Timestamp(ts), y_max + pad * 0.95),
+                rotation=90,
+                ha="right",
+                va="top",
+                color="#8a6a00",
+                fontsize=8,
+                clip_on=True,
+            )
+
+    if "sunset" in df.columns:
+        for ts in sorted(pd.to_datetime(df["sunset"], errors="coerce").dropna().unique()):
+            ax.axvline(pd.Timestamp(ts), color="#2f5aa8", linestyle="--", linewidth=1.1, alpha=0.8)
+            label = pd.Timestamp(ts).strftime("Sunset %I:%M %p").replace(" 0", " ")
+            ax.annotate(
+                label,
+                (pd.Timestamp(ts), y_max + pad * 0.95),
+                rotation=90,
+                ha="left",
+                va="top",
+                color="#213f75",
+                fontsize=8,
+                clip_on=True,
+            )
 
     if annotate and len(df) >= 3:
         highs, lows = detect_peaks(df["tide_ft"])

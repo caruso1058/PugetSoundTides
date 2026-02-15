@@ -12,7 +12,14 @@ def test_tidy_from_raw_predictions(tmp_path):
         "predictions": [
             {"t": "2025-01-01 00:00", "v": "7.1", "type": "H"},
             {"t": "2025-01-01 01:00", "v": "6.4", "type": "L"},
-        ]
+        ],
+        "sun_events": [
+            {
+                "date": "2025-01-01",
+                "sunrise": "2025-01-01T07:55:00-08:00",
+                "sunset": "2025-01-01T16:28:00-08:00",
+            }
+        ],
     }
     raw.write_text(json.dumps(payload))
 
@@ -23,6 +30,8 @@ def test_tidy_from_raw_predictions(tmp_path):
     assert df["hi_lo"].tolist() == ["H", "L"]
     assert "date" in df.columns
     assert "hour" in df.columns
+    assert df["sunrise_time"].iloc[0] == "7:55 AM"
+    assert df["sunset_time"].iloc[0] == "4:28 PM"
 
 
 def test_tidy_from_raw_water_level(tmp_path):
@@ -35,6 +44,8 @@ def test_tidy_from_raw_water_level(tmp_path):
     assert list(df["source"].unique()) == ["observation"]
     assert df["tide_ft"].tolist() == [5.23]
     assert df["hi_lo"].isna().all()
+    assert "sunrise" in df.columns
+    assert "sunset" in df.columns
 
 
 def test_latest_raw_for_station_uses_lexicographically_last(tmp_path):

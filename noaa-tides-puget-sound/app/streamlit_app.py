@@ -9,6 +9,8 @@ import datetime as dt
 from pathlib import Path
 
 import streamlit as st
+import matplotlib.pyplot as plt
+from matplotlib.dates import AutoDateLocator, DateFormatter
 
 from src.noaa_tides_ps.fetch import fetch
 from src.noaa_tides_ps.transform import tidy_from_raw
@@ -80,6 +82,40 @@ def do_fetch():
         st.error(f"Fetch failed: {e}")
         st.stop()
 
+
+def render_tide_chart(df):
+    fig, ax = plt.subplots(figsize=(10, 4))
+    ax.plot(df["timestamp"], df["tide_ft"], linewidth=2)
+    ax.set_xlabel("Time")
+    ax.set_ylabel("Tide (ft)")
+    ax.set_title("Tide Levels with Sunrise/Sunset")
+
+    locator = AutoDateLocator(minticks=4, maxticks=10)
+    ax.xaxis.set_major_locator(locator)
+    ax.xaxis.set_major_formatter(DateFormatter("%b %d\n%I:%M %p"))
+
+    y_min, y_max = float(df["tide_ft"].min()), float(df["tide_ft"].max())
+    pad = max(0.3, (y_max - y_min) * 0.10)
+    ax.set_ylim(y_min - pad * 0.15, y_max + pad)
+
+    if "sunrise" in df.columns:
+        for ts in sorted(df["sunrise"].dropna().unique()):
+            ts = dt.datetime.fromisoformat(str(ts).replace("Z", "+00:00")) if isinstance(ts, str) else ts
+            ax.axvline(ts, color="#d4a017", linestyle="--", linewidth=1.1, alpha=0.8)
+            label = ts.strftime("Sunrise %I:%M %p").replace(" 0", " ")
+            ax.annotate(label, (ts, y_max + pad * 0.95), rotation=90, ha="right", va="top", fontsize=8, color="#8a6a00")
+
+    if "sunset" in df.columns:
+        for ts in sorted(df["sunset"].dropna().unique()):
+            ts = dt.datetime.fromisoformat(str(ts).replace("Z", "+00:00")) if isinstance(ts, str) else ts
+            ax.axvline(ts, color="#2f5aa8", linestyle="--", linewidth=1.1, alpha=0.8)
+            label = ts.strftime("Sunset %I:%M %p").replace(" 0", " ")
+            ax.annotate(label, (ts, y_max + pad * 0.95), rotation=90, ha="left", va="top", fontsize=8, color="#213f75")
+
+    fig.autofmt_xdate()
+    fig.tight_layout()
+    st.pyplot(fig, use_container_width=True)
+
 # --- fetch when needed ---
 if fetch_now or (auto_fetch and selection_changed):
     do_fetch()
@@ -110,7 +146,16 @@ if df.empty:
     st.stop()
 
 st.subheader(f"{station_name} — {product_label}")
-st.line_chart(df.set_index("timestamp")["tide_ft"])
+render_tide_chart(df)
+
+if {"date", "sunrise_time", "sunset_time"}.issubset(set(df.columns)):
+    sun_table = (
+        df[["date", "sunrise_time", "sunset_time"]]
+        .drop_duplicates(subset=["date"])
+        .sort_values("date")
+    )
+    st.caption("Daily sun events")
+    st.dataframe(sun_table, use_container_width=True)
 
 with st.expander("Preview data (first 100 rows)"):
     st.dataframe(df.head(100))

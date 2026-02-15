@@ -22,7 +22,34 @@ def tidy_from_raw(raw_path: Path, product: str) -> pd.DataFrame:
         df["source"] = "observation"
     df["date"] = df["timestamp"].dt.date
     df["hour"] = df["timestamp"].dt.hour
+    df = add_sun_columns(df, payload)
     return df
+
+
+def add_sun_columns(df: pd.DataFrame, payload: dict) -> pd.DataFrame:
+    sun_events = payload.get("sun_events", [])
+    if not sun_events:
+        df["sunrise"] = pd.NaT
+        df["sunset"] = pd.NaT
+        df["sunrise_time"] = None
+        df["sunset_time"] = None
+        return df
+
+    sun_df = pd.DataFrame(sun_events)
+    if sun_df.empty:
+        df["sunrise"] = pd.NaT
+        df["sunset"] = pd.NaT
+        df["sunrise_time"] = None
+        df["sunset_time"] = None
+        return df
+
+    sun_df["date"] = pd.to_datetime(sun_df["date"]).dt.date
+    sun_df["sunrise"] = pd.to_datetime(sun_df["sunrise"], errors="coerce")
+    sun_df["sunset"] = pd.to_datetime(sun_df["sunset"], errors="coerce")
+    merged = df.merge(sun_df[["date", "sunrise", "sunset"]], on="date", how="left")
+    merged["sunrise_time"] = merged["sunrise"].dt.strftime("%I:%M %p").str.lstrip("0")
+    merged["sunset_time"] = merged["sunset"].dt.strftime("%I:%M %p").str.lstrip("0")
+    return merged
 
 def latest_raw_for_station(raw_dir: Path, station: str, product: str) -> Path:
     files = sorted(raw_dir.glob(f"{product}_{station}_*.json"))

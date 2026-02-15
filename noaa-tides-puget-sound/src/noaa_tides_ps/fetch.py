@@ -3,8 +3,17 @@ import argparse, datetime as dt
 from pathlib import Path
 from typing import Dict, Any
 import requests, json
+from zoneinfo import ZoneInfo
 
 BASE_URL = "https://api.tidesandcurrents.noaa.gov/api/prod/datagetter"
+SUN_API_URL = "https://api.sunrise-sunset.org/json"
+
+STATION_COORDS: Dict[str, Dict[str, str | float]] = {
+    "9447130": {"name": "Seattle", "lat": 47.6026, "lng": -122.3393, "tz": "US/Pacific"},
+    "9446484": {"name": "Tacoma", "lat": 47.2669, "lng": -122.4134, "tz": "US/Pacific"},
+    "9444900": {"name": "Port Townsend", "lat": 48.1114, "lng": -122.7596, "tz": "US/Pacific"},
+    "9447659": {"name": "Everett", "lat": 47.9747, "lng": -122.2216, "tz": "US/Pacific"},
+}
 
 def build_url(
     station: str,
@@ -42,9 +51,50 @@ def fetch(station: str, start: dt.date, end: dt.date, out_dir: Path, product: st
     key = "predictions" if product == "predictions" else "data"
     if key not in data:
         raise RuntimeError(f"Unexpected API response keys: {list(data.keys())}")
+    data["sun_events"] = fetch_sun_events(station=station, start=start, end=end)
     out_path = out_dir / f"{product}_{station}_{b}_{e}.json"
     out_path.write_text(json.dumps(data, indent=2))
     return out_path
+
+
+def fetch_sun_events(station: str, start: dt.date, end: dt.date) -> list[Dict[str, str]]:
+    meta = STATION_COORDS.get(str(station))
+    if not meta:
+        return []
+
+    tz = ZoneInfo(str(meta["tz"]))
+    events: list[Dict[str, str]] = []
+    day = start
+
+    while day <= end:
+        params = {
+            "lat": meta["lat"],
+            "lng": meta["lng"],
+            "date": day.isoformat(),
+            "formatted": 0,
+        }
+        try:
+            resp = requests.get(SUN_API_URL, params=params, timeout=20)
+            resp.raise_for_status()
+            payload = resp.json()
+            results = payload.get("results", {})
+            sunrise_utc = dt.datetime.fromisoformat(results["sunrise"])
+            sunset_utc = dt.datetime.fromisoformat(results["sunset"])
+            sunrise_local = sunrise_utc.astimezone(tz)
+            sunset_local = sunset_utc.astimezone(tz)
+            events.append(
+                {
+                    "date": day.isoformat(),
+                    "sunrise": sunrise_local.isoformat(),
+                    "sunset": sunset_local.isoformat(),
+                }
+            )
+        except Exception:
+            # Keep tide fetch resilient if sun API is unavailable for a day.
+            pass
+        day += dt.timedelta(days=1)
+
+    return events
 
 def main():
     p = argparse.ArgumentParser()
