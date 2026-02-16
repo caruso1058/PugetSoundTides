@@ -82,6 +82,7 @@ def do_fetch():
             product=product,
         )
         st.success(f"Fetched raw data → {raw_path.name}")
+        st.session_state.current_raw_path = str(raw_path)
         st.session_state.last_sel = selection
     except ValueError as e:
         st.warning(str(e))
@@ -143,8 +144,17 @@ if not raw_files:
     st.info("No raw data yet. Click **Fetch / Refresh now** in the sidebar.")
     st.stop()
 
-# latest for current selection
-raw_path = raw_files[-1]
+# Pick the raw file for the current window when present; otherwise use most recently modified.
+start, end = compute_window(product, days)
+expected_name = f"{product}_{station}_{start.strftime('%Y%m%d')}_{end.strftime('%Y%m%d')}.json"
+expected_path = raw_dir / expected_name
+
+if expected_path.exists():
+    raw_path = expected_path
+elif st.session_state.get("current_raw_path") and Path(st.session_state.current_raw_path).exists():
+    raw_path = Path(st.session_state.current_raw_path)
+else:
+    raw_path = max(raw_files, key=lambda p: p.stat().st_mtime)
 
 # parse + render
 try:
