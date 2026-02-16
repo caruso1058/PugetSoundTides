@@ -9,6 +9,7 @@ import datetime as dt
 from pathlib import Path
 
 import streamlit as st
+import pandas as pd
 
 try:
     import matplotlib.pyplot as plt
@@ -113,15 +114,15 @@ def render_tide_chart(df):
     ax.set_ylim(y_min - pad * 0.15, y_max + pad)
 
     if "sunrise" in df.columns:
-        for ts in sorted(df["sunrise"].dropna().unique()):
-            ts = dt.datetime.fromisoformat(str(ts).replace("Z", "+00:00")) if isinstance(ts, str) else ts
+        for ts in sorted(pd.to_datetime(df["sunrise"], errors="coerce").dropna().unique()):
+            ts = pd.Timestamp(ts)
             ax.axvline(ts, color="#d4a017", linestyle="--", linewidth=1.1, alpha=0.8)
             label = ts.strftime("Sunrise %I:%M %p").replace(" 0", " ")
             ax.annotate(label, (ts, y_max + pad * 0.95), rotation=90, ha="right", va="top", fontsize=8, color="#8a6a00")
 
     if "sunset" in df.columns:
-        for ts in sorted(df["sunset"].dropna().unique()):
-            ts = dt.datetime.fromisoformat(str(ts).replace("Z", "+00:00")) if isinstance(ts, str) else ts
+        for ts in sorted(pd.to_datetime(df["sunset"], errors="coerce").dropna().unique()):
+            ts = pd.Timestamp(ts)
             ax.axvline(ts, color="#2f5aa8", linestyle="--", linewidth=1.1, alpha=0.8)
             label = ts.strftime("Sunset %I:%M %p").replace(" 0", " ")
             ax.annotate(label, (ts, y_max + pad * 0.95), rotation=90, ha="left", va="top", fontsize=8, color="#213f75")

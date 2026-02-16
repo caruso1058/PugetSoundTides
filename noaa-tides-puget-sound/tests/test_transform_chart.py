@@ -30,6 +30,8 @@ def test_tidy_from_raw_predictions(tmp_path):
     assert df["hi_lo"].tolist() == ["H", "L"]
     assert "date" in df.columns
     assert "hour" in df.columns
+    assert str(df["sunrise"].dtype) == "datetime64[ns]"
+    assert str(df["sunset"].dtype) == "datetime64[ns]"
     assert df["sunrise_time"].iloc[0] == "7:55 AM"
     assert df["sunset_time"].iloc[0] == "4:28 PM"
 

@@ -44,8 +44,18 @@ def add_sun_columns(df: pd.DataFrame, payload: dict) -> pd.DataFrame:
         return df
 
     sun_df["date"] = pd.to_datetime(sun_df["date"]).dt.date
-    sun_df["sunrise"] = pd.to_datetime(sun_df["sunrise"], errors="coerce")
-    sun_df["sunset"] = pd.to_datetime(sun_df["sunset"], errors="coerce")
+    # NOAA tide timestamps are local wall time (no timezone). Normalize sun events
+    # to Pacific local naive timestamps so chart markers align with tide points.
+    sun_df["sunrise"] = (
+        pd.to_datetime(sun_df["sunrise"], errors="coerce", utc=True)
+        .dt.tz_convert("US/Pacific")
+        .dt.tz_localize(None)
+    )
+    sun_df["sunset"] = (
+        pd.to_datetime(sun_df["sunset"], errors="coerce", utc=True)
+        .dt.tz_convert("US/Pacific")
+        .dt.tz_localize(None)
+    )
     merged = df.merge(sun_df[["date", "sunrise", "sunset"]], on="date", how="left")
     merged["sunrise_time"] = merged["sunrise"].dt.strftime("%I:%M %p").str.lstrip("0")
     merged["sunset_time"] = merged["sunset"].dt.strftime("%I:%M %p").str.lstrip("0")
