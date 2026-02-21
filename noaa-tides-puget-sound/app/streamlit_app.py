@@ -101,7 +101,8 @@ def render_tide_chart(df):
         return
 
     fig, ax = plt.subplots(figsize=(10, 4))
-    ax.plot(df["timestamp"], df["tide_ft"], linewidth=2)
+    line_color = "#2c7fb8"
+    ax.plot(df["timestamp"], df["tide_ft"], linewidth=2.3, color=line_color)
     ax.set_xlabel("Time")
     ax.set_ylabel("Tide (ft)")
     ax.set_title("Tide Levels with Sunrise/Sunset")
@@ -112,7 +113,11 @@ def render_tide_chart(df):
 
     y_min, y_max = float(df["tide_ft"].min()), float(df["tide_ft"].max())
     pad = max(0.3, (y_max - y_min) * 0.10)
-    ax.set_ylim(y_min - pad * 0.15, y_max + pad)
+    chart_floor = -2.0
+    ax.set_ylim(chart_floor, y_max + pad)
+    ax.fill_between(df["timestamp"], df["tide_ft"], chart_floor, color=line_color, alpha=0.18)
+    ax.yaxis.grid(True, linestyle="--", linewidth=0.8, alpha=0.45)
+    ax.xaxis.grid(False)
 
     if "sunrise" in df.columns:
         for ts in sorted(pd.to_datetime(df["sunrise"], errors="coerce").dropna().unique()):
