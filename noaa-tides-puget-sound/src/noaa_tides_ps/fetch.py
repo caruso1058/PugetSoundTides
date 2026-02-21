@@ -16,6 +16,7 @@ STATION_COORDS: Dict[str, Dict[str, Union[str, float]]] = {
     "9446484": {"name": "Tacoma", "lat": 47.2669, "lng": -122.4134, "tz": "US/Pacific"},
     "9444900": {"name": "Port Townsend", "lat": 48.1114, "lng": -122.7596, "tz": "US/Pacific"},
     "9447659": {"name": "Everett", "lat": 47.9747, "lng": -122.2216, "tz": "US/Pacific"},
+    "9443090": {"name": "Neah Bay", "lat": 48.3652, "lng": -124.6246, "tz": "US/Pacific"},
 }
 
 def build_url(

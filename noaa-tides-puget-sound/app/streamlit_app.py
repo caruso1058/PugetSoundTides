@@ -28,6 +28,7 @@ STATIONS = {
     "Tacoma (9446484)": "9446484",
     "Port Townsend (9444900)": "9444900",
     "Everett (9447659)": "9447659",
+    "Neah Bay (9443090)": "9443090",
 }
 
 PRODUCTS = {

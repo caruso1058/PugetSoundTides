@@ -13,6 +13,7 @@ STATION_NAMES = {
     "9446484": "Tacoma",
     "9444900": "Port Townsend",
     "9447659": "Everett",
+    "9443090": "Neah Bay",
 }
 
 def detect_peaks(s: pd.Series):
