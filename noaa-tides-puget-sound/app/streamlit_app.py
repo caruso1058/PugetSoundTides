@@ -37,7 +37,7 @@ PRODUCTS = {
 }
 
 st.set_page_config(page_title="Puget Sound Tides", page_icon="🌊", layout="wide")
-st.title("🌊 Puget Sound Tides — NOAA (Predictions & Observations)")
+st.title("🌊 Puget Sound Tides — NOAA")
 
 # --- UI controls ---
 with st.sidebar:
